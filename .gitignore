@@ -1,4 +1,5 @@
 .gradio
+test.py
 
 __pycache__/
 report/

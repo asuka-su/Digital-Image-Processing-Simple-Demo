@@ -32,4 +32,4 @@ with gr.Blocks(css='style.css') as demo:
 
 
 if __name__ == '__main__':
-    demo.launch(server_port=8088)
+    demo.launch(server_port=8088, share=True)
