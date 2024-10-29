@@ -23,7 +23,7 @@ Bicubic插值最复杂，需要引入更复杂的加权函数，这里直接硬�
 
 相关代码在[utils.py](../utils.py)中实现。
 
-## Rotation
+## Rotation [extension]
 
 允许用户给定旋转中心和旋转角度。  
 
@@ -35,7 +35,7 @@ Bicubic插值最复杂，需要引入更复杂的加权函数，这里直接硬�
 
 相关代码在[utils.py](../utils.py)中实现。
 
-## Shearing
+## Shearing [extension]
 
 允许用户选择边及比例进行斜切操作。
 
