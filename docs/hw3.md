@@ -33,4 +33,4 @@
 
 可以发现其中一些人脸发生了性别的转变，效果较好的例如：第四行第七个、第五行第七个、第七行第二个等。
 
-相关代码在[editing.ipynb](../assets/hw3/editing.ipynb)中实现。
+相关代码在[assets/hw3/editing.ipynb](../assets/hw3/editing.ipynb)中实现。
