@@ -10,3 +10,5 @@ is all you need.
 [Resize](docs/hw2.md)
 
 [Rotation & Shearing](docs/hw2.md)
+
+[DCGAN Simple Playground](docs/hw3.md)
