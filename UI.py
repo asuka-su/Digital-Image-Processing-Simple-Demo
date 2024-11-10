@@ -179,18 +179,19 @@ def create_demo_hw2_ex(process):
 
 def create_demo_hw3(process):
     with gr.Blocks() as demo:
-        gr.Markdown('## NOT IMPLEMENTED') 
+        gr.Markdown('## Let\'s try DCGAN!') 
         with gr.Row():
             with gr.Column():
-                input_image = gr.Image(sources=['upload', 'webcam', 'clipboard'], type='numpy', label='input image')  
+                seed = gr.Slider(minimum=0, maximum=65535, label="Seed", value=0, step=1)
             with gr.Column():
                 output_image = gr.Image(type='numpy', label='output image', interactive=False)
                 run_button = gr.Button(value='START!')
 
         run_button.click(fn=process,
-                        inputs=[input_image],
+                        inputs=[seed],
                         outputs=[output_image])
     return demo
+
 
 def create_demo_hw4(process):
     with gr.Blocks() as demo:

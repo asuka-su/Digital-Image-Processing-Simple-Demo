@@ -25,7 +25,7 @@ with gr.Blocks(css='style.css') as demo:
             create_demo_hw2(function_hw2)   
         with gr.TabItem('ROTATION & SHEARING'):
             create_demo_hw2_ex(function_hw2_ex)
-        with gr.TabItem('NOT IMPLEMENTED'):
+        with gr.TabItem('DCGAN'):
             create_demo_hw3(function_hw3)  
         with gr.TabItem('NOT IMPLEMENTED'):
             create_demo_hw4(function_hw4) 

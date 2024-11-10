@@ -65,10 +65,9 @@ def function_hw2_ex(input_image, method, center_x, center_y, deg, R_value, G_val
     
     return input_image
 
-def function_hw3(input_image):
-    if input_image is None:
-        raise gr.Error('WHERE is your input image?', duration=5)   
-    output_image = input_image
+def function_hw3(seed):
+    output_image = seed_given_generator(seed)
+
     return output_image
 
 def function_hw4(input_image):

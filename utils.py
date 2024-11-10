@@ -1,8 +1,20 @@
 import cv2
 import numpy as np
+import torch
+import torch.nn as nn
+import torchvision.utils as vutils
+
+__all__ = [
+    'RGB2HSL', 'HSL2RGB', 
+    'resize_nearest', 'resize_bilinear', 'resize_bicubic', 'resize_lanczos', 'rotate', 'shearing', 
+    'seed_given_generator', 
+]
 
 PI = np.pi
 
+#---------------------------------#
+#          hw1 functions          #
+#---------------------------------#
 def RGB2HSL(rgb_image):
     rgb_image = rgb_image / 255.0
     r, g, b = rgb_image[:,:,0], rgb_image[:,:,1], rgb_image[:,:,2]
@@ -59,6 +71,9 @@ def HSL2RGB(hsl_image):
     return (255 * rgb_image).astype(np.uint8)
 
 
+#---------------------------------#
+#          hw2 functions          #
+#---------------------------------#
 def resize_nearest(input_image, scaling, use_cv2):
     scaling = float(scaling.replace('x', ''))
     
@@ -260,3 +275,51 @@ def shearing(input_image, side, size, default_color):
     output_image = np.where(in_bound[:,:,np.newaxis], np.array(default_color)[np.newaxis, np.newaxis,:], output_image)
     
     return output_image
+
+
+#---------------------------------#
+#          hw3 functions          #
+#---------------------------------#
+image_size = 64
+nc = 3
+nz = 100
+ngf = 64
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+class Generator(nn.Module):
+    def __init__(self):
+        super(Generator, self).__init__()
+        self.main = nn.Sequential(
+            nn.ConvTranspose2d(nz, ngf * 8, 4, 1, 0, bias=False), 
+            nn.BatchNorm2d(ngf * 8), 
+            nn.ReLU(True), 
+            nn.ConvTranspose2d(ngf * 8, ngf * 4, 4, 2, 1, bias=False), 
+            nn.BatchNorm2d(ngf * 4), 
+            nn.ReLU(True), 
+            nn.ConvTranspose2d(ngf * 4, ngf * 2, 4, 2, 1, bias=False), 
+            nn.BatchNorm2d(ngf * 2), 
+            nn.ReLU(True), 
+            nn.ConvTranspose2d(ngf * 2, ngf, 4, 2, 1, bias=False), 
+            nn.BatchNorm2d(ngf), 
+            nn.ReLU(True), 
+            nn.ConvTranspose2d(ngf, nc, 4, 2, 1, bias=False), 
+            nn.Tanh()
+        )
+
+    def forward(self, input):
+        return self.main(input)
+
+
+netG = Generator().to(device)
+netG.load_state_dict(torch.load('./assets/checkpoint/dcgan_checkpoint.pth'))
+
+def seed_given_generator(seed):
+    torch.manual_seed(seed)
+    test_batch_size = 64
+    noise = torch.randn(test_batch_size, nz, 1, 1, device=device)
+    with torch.no_grad():
+        fake = netG(noise).detach().cpu()
+    vis = vutils.make_grid(fake, padding=2, normalize=True)
+    vis = (vis.numpy() * 255).astype(np.uint8).transpose(1, 2, 0)
+    
+    return vis
