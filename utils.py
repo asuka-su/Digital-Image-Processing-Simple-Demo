@@ -3,11 +3,13 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torchvision.utils as vutils
+from math import exp
 
 __all__ = [
     'RGB2HSL', 'HSL2RGB', 
     'resize_nearest', 'resize_bilinear', 'resize_bicubic', 'resize_lanczos', 'rotate', 'shearing', 
     'seed_given_generator', 
+    'joint_bilateral_filter', 'guided_filter', 
 ]
 
 PI = np.pi
@@ -310,10 +312,16 @@ class Generator(nn.Module):
         return self.main(input)
 
 
-netG = Generator().to(device)
-netG.load_state_dict(torch.load('./assets/checkpoint/dcgan_checkpoint.pth'))
+netG = None
+def load_model():
+    global netG
+    if netG is None:
+        netG = Generator().to(device)
+        netG.load_state_dict(torch.load('./assets/checkpoint/dcgan_checkpoint.pth'))
+    return netG
 
 def seed_given_generator(seed):
+    netG = load_model()
     torch.manual_seed(seed)
     test_batch_size = 64
     noise = torch.randn(test_batch_size, nz, 1, 1, device=device)
@@ -323,3 +331,82 @@ def seed_given_generator(seed):
     vis = (vis.numpy() * 255).astype(np.uint8).transpose(1, 2, 0)
     
     return vis
+
+
+#---------------------------------#
+#          hw4 functions          #
+#---------------------------------#
+def joint_bilateral_filter(input_image, guidance_image, filter_size, sigma_s, sigma_r, use_cv2):
+    if use_cv2:
+        return cv2.ximgproc.jointBilateralFilter(guidance_image, input_image, d = 2 * filter_size + 1, sigmaColor=sigma_r, sigmaSpace=sigma_s)
+    
+    # how to improve using numpy?
+    filter_shift = [(i, j) for i in range(-filter_size, filter_size + 1) for j in range(-filter_size, filter_size + 1)]
+    w, h, _ = input_image.shape
+    output_image = np.zeros_like(input_image)
+    guidance_image = cv2.cvtColor(guidance_image, cv2.COLOR_RGB2GRAY).astype(np.float32)
+    input_image = input_image.astype(np.float32)
+
+    for x in range(w):
+        for y in range(h):
+            pixel_Ii = guidance_image[x, y]
+            filter_weight = []
+
+            for shift in filter_shift:
+                x_cur, y_cur = x + shift[0], y + shift[1]
+                if (x_cur < 0 or y_cur < 0 or x_cur >= w or y_cur >= h):
+                    continue
+                pixel_Ij = guidance_image[x_cur, y_cur]
+                pos = exp(-(shift[0] ** 2 + shift[1] ** 2) / (sigma_s ** 2))
+                color = exp(-((pixel_Ii - pixel_Ij) ** 2) / (sigma_r ** 2))
+                filter_weight.append(pos * color)
+            filter_weight = [t / sum(filter_weight) for t in filter_weight]
+
+            pixel_outi = np.zeros_like(input_image[x, y, :]).astype(np.float32)
+            id = 0
+            for shift in filter_shift:
+                x_cur, y_cur = x + shift[0], y + shift[1]
+                if (x_cur < 0 or y_cur < 0 or x_cur >= w or y_cur >= h):
+                    continue
+                pixel_outi += input_image[x_cur, y_cur, :] * filter_weight[id]
+                id += 1
+            output_image[x, y, :] = pixel_outi
+    
+    output_image = np.clip(output_image, 0, 255).astype(np.uint8)
+    return output_image
+
+    
+def guided_filter(input_image, guidance_image, filter_size, eps, use_cv2):
+    if use_cv2:
+        return cv2.ximgproc.guidedFilter(guidance_image, input_image, 2 * filter_size + 1, eps)
+    
+    w, h, _ = input_image.shape
+    filter_weight_a = np.zeros((w, h))
+    filter_weight_b = np.zeros((w, h))
+    input_image = input_image.astype(np.float32)
+    guidance_image = guidance_image.astype(np.float32)
+    output_image = np.zeros_like(input_image)
+
+    for x in range(w):
+        for y in range(h):
+            x_start = max(x - filter_size, 0)
+            x_end = min(x + filter_size, w - 1) + 1
+            y_start = max(y - filter_size, 0)
+            y_end = min(y + filter_size, h - 1) + 1
+            I_k = guidance_image[x_start:x_end, y_start:y_end, :]
+            p_k = input_image[x_start:x_end, y_start:y_end, :]
+            filter_weight_a[x, y] = ((I_k * p_k).mean() - I_k.mean() * p_k.mean()) / ((I_k * I_k).mean() - (I_k.mean()) ** 2 + eps)
+            filter_weight_b[x, y] = p_k.mean() - filter_weight_a[x, y] * I_k.mean()
+    
+    for x in range(w):
+        for y in range(h):
+            x_start = max(x - filter_size, 0)
+            x_end = min(x + filter_size, w - 1) + 1
+            y_start = max(y - filter_size, 0)
+            y_end = min(y + filter_size, h - 1) + 1
+            filter_weight_a_k = filter_weight_a[x_start:x_end, y_start:y_end].mean()
+            filter_weight_b_k = filter_weight_b[x_start:x_end, y_start:y_end].mean()
+            output_image[x, y, :] = filter_weight_a_k * guidance_image[x, y, :] + filter_weight_b_k
+    
+    output_image = np.clip(output_image, 0, 255).astype(np.uint8)
+    return output_image

@@ -70,11 +70,20 @@ def function_hw3(seed):
 
     return output_image
 
-def function_hw4(input_image):
+def function_hw4(input_image, guidance_image, method, filter_size, sigma_s, sigma_r, eps, use_cv2):
     if input_image is None:
         raise gr.Error('WHERE is your input image?', duration=5)
-    output_image = input_image
-    return output_image
+    if guidance_image is None:
+        raise gr.Error('WHERE is your guidance image?', duration=5)
+
+    if method == 'Joint Bilateral Filter':
+        if not use_cv2 and int(filter_size) >= 3:
+            gr.Warning('Naive implement for large_kernel size will be extremely slow, try cv2 instead', duration=5)
+        return joint_bilateral_filter(input_image, guidance_image, int(filter_size), float(sigma_s), float(sigma_r), use_cv2)
+    elif method == 'Guided Filter':
+        return guided_filter(input_image, guidance_image, int(filter_size), float(eps), use_cv2)
+
+    return input_image
 
 def function_hw5(input_image):
     if input_image is None:

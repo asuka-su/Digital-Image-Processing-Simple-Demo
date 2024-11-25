@@ -195,16 +195,48 @@ def create_demo_hw3(process):
 
 def create_demo_hw4(process):
     with gr.Blocks() as demo:
-        gr.Markdown('## NOT IMPLEMENTED') 
+        gr.Markdown('## BILATERAL & GUIDED FILTER') 
         with gr.Row():
             with gr.Column():
                 input_image = gr.Image(sources=['upload', 'webcam', 'clipboard'], type='numpy', label='input image')  
+                guidance_image = gr.Image(sources=['upload', 'webcam', 'clipboard'], type='numpy', label='guidance image')  
+                method = gr.Radio(choices=['Joint Bilateral Filter', 'Guided Filter'], label='Filter Method', interactive=True)
+                with gr.Row():
+                    filter_size = gr.Textbox(label='Filter size (work as 2*size+1)')
+                with gr.Row():
+                    sigma_s = gr.Textbox(label='Control space effect', visible=False)
+                    sigma_r = gr.Textbox(label='Control intensity effect', visible=False)
+                with gr.Row():
+                    eps = gr.Textbox(label='Regularization term', visible=False)
+                with gr.Row():
+                    cv2_box = gr.Checkbox(value=False, label='Use opencv-python', interactive=True)
             with gr.Column():
                 output_image = gr.Image(type='numpy', label='output image', interactive=False)
                 run_button = gr.Button(value='START!')
+        
+        input_image.change(fn=lambda: None, inputs=[], outputs=output_image)
+        guidance_image.change(fn=lambda: None, inputs=[], outputs=output_image)
+
+        def method_radio_update(radio):
+            if radio == 'Joint Bilateral Filter':
+                return (
+                    gr.update(visible=True), 
+                    gr.update(visible=True), 
+                    gr.update(visible=False), 
+                )
+            elif radio == 'Guided Filter':
+                return (
+                    gr.update(visible=False), 
+                    gr.update(visible=False), 
+                    gr.update(visible=True), 
+                )
+            else:
+                raise gr.Error(f"Unknown operation choice {radio}", duration=5)
+
+        method.change(fn=method_radio_update, inputs=[method], outputs=[sigma_r, sigma_s, eps])
 
         run_button.click(fn=process,
-                        inputs=[input_image],
+                        inputs=[input_image, guidance_image, method, filter_size, sigma_s, sigma_r, eps, cv2_box],
                         outputs=[output_image])
     return demo
 
