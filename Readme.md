@@ -12,3 +12,5 @@ is all you need.
 [Rotation & Shearing](docs/hw2.md)
 
 [DCGAN Simple Playground](docs/hw3.md)
+
+[Bilateral & Guided Filter](docs/hw4.md)
