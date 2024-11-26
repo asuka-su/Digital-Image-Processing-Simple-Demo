@@ -14,3 +14,5 @@ is all you need.
 [DCGAN Simple Playground](docs/hw3.md)
 
 [Bilateral & Guided Filter](docs/hw4.md)
+
+[HE & CLAHE](docs/hw5.md)

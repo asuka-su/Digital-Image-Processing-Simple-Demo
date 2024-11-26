@@ -29,7 +29,7 @@ with gr.Blocks(css='style.css') as demo:
             create_demo_hw3(function_hw3)  
         with gr.TabItem('FILTER'):
             create_demo_hw4(function_hw4) 
-        with gr.TabItem('NOT IMPLEMENTED'):
+        with gr.TabItem('HISTOGRAM EQUALIZATION'):
             create_demo_hw5(function_hw5)           
 
 if __name__ == '__main__':

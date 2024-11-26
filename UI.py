@@ -195,7 +195,7 @@ def create_demo_hw3(process):
 
 def create_demo_hw4(process):
     with gr.Blocks() as demo:
-        gr.Markdown('## BILATERAL & GUIDED FILTER') 
+        gr.Markdown('## Bilateral & Guided Filter') 
         with gr.Row():
             with gr.Column():
                 input_image = gr.Image(sources=['upload', 'webcam', 'clipboard'], type='numpy', label='input image')  
@@ -242,15 +242,40 @@ def create_demo_hw4(process):
 
 def create_demo_hw5(process):
     with gr.Blocks() as demo:
-        gr.Markdown('## NOT IMPLEMENTED') 
+        gr.Markdown('## Histogram Equalization & CLAHE') 
         with gr.Row():
             with gr.Column():
                 input_image = gr.Image(sources=['upload', 'webcam', 'clipboard'], type='numpy', label='input image')  
+                method = gr.Radio(choices=['Histogram Equalization', 'CLAHE'], label = 'HE method', interactive=True)
+                with gr.Row():
+                    cliplimit = gr.Textbox(label='Clip Limit', value='40', visible=False)
+                    grid_row = gr.Textbox(label='Grid Row Count', value='8', visible=False)
+                    grid_col = gr.Textbox(label='Grid Column Count', value='8', visible=False)
             with gr.Column():
                 output_image = gr.Image(type='numpy', label='output image', interactive=False)
                 run_button = gr.Button(value='START!')
 
+        input_image.change(fn=lambda: None, inputs=[], outputs=[output_image])
+
+        def method_radio_update(radio):
+            if radio == 'Histogram Equalization':
+                return (
+                    gr.update(visible=False), 
+                    gr.update(visible=False), 
+                    gr.update(visible=False), 
+                )
+            elif radio == 'CLAHE':
+                return (
+                    gr.update(visible=True), 
+                    gr.update(visible=True), 
+                    gr.update(visible=True), 
+                )
+            else:
+                raise gr.Error(f"Unknown operation choice {radio}", duration=5)
+        
+        method.change(fn=method_radio_update, inputs=[method], outputs=[cliplimit, grid_row, grid_col])
+
         run_button.click(fn=process,
-                        inputs=[input_image],
+                        inputs=[input_image, method, cliplimit, grid_row, grid_col],
                         outputs=[output_image])
     return demo

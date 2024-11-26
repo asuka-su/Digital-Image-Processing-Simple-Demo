@@ -85,8 +85,13 @@ def function_hw4(input_image, guidance_image, method, filter_size, sigma_s, sigm
 
     return input_image
 
-def function_hw5(input_image):
+def function_hw5(input_image, method, cliplimit, grid_row, grid_col):
     if input_image is None:
         raise gr.Error('WHERE is your input image?', duration=5)
-    output_image = input_image
-    return output_image
+
+    if method == 'Histogram Equalization':
+        return histogram_equalization(input_image)
+    elif method == 'CLAHE':
+        return cla_he(input_image, int(cliplimit), (int(grid_row), int(grid_col)))
+    
+    return input_image

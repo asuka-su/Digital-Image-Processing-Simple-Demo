@@ -10,6 +10,7 @@ __all__ = [
     'resize_nearest', 'resize_bilinear', 'resize_bicubic', 'resize_lanczos', 'rotate', 'shearing', 
     'seed_given_generator', 
     'joint_bilateral_filter', 'guided_filter', 
+    'histogram_equalization', 'cla_he' 
 ]
 
 PI = np.pi
@@ -410,3 +411,119 @@ def guided_filter(input_image, guidance_image, filter_size, eps, use_cv2):
     
     output_image = np.clip(output_image, 0, 255).astype(np.uint8)
     return output_image
+
+#---------------------------------#
+#          hw5 functions          #
+#---------------------------------#
+def histogram_equalization(input_image):
+    w, h, _ = input_image.shape
+    hsl_image = RGB2HSL(input_image)
+    l_space = hsl_image[:,:,2]
+
+    cdf = np.zeros((256))
+    for x in range(w):
+        for y in range(h):
+            cdf[round(l_space[x, y] * 255)] += 1
+    
+    cdf = [t / (w * h) for t in cdf]
+    for i in range(1, 256):
+        cdf[i] = cdf[i - 1] + cdf[i]
+    for x in range(w):
+        for y in range(h):
+            hsl_image[x, y, 2] = cdf[round(l_space[x, y] * 255)]
+    
+    eps = 0.02
+    hsl_image[:, :, 1] = np.where(
+        hsl_image[:, :, 1] + eps > 1, 
+        1, hsl_image[:, :, 1] + eps
+    )
+    
+    return HSL2RGB(hsl_image)
+
+
+def cla_he(input_image, limit, grid_size):
+    w, h, _ = input_image.shape
+    hsl_image = RGB2HSL(input_image)
+    l_space = hsl_image[:,:,2]
+    mapping = np.zeros((grid_size[0], grid_size[1], 256))
+
+    x_start = [t * (w // grid_size[0]) for t in range(grid_size[0])] + [w]
+    x_center = [(x_start[i] + x_start[i + 1]) / 2 for i in range(grid_size[0])]
+    y_start = [t * (h // grid_size[1]) for t in range(grid_size[1])] + [h]
+    y_center = [(y_start[j] + y_start[j + 1]) / 2 for j in range(grid_size[1])]
+
+    if limit <= 0 or limit > 255:
+        limit = 255
+
+    for i in range(grid_size[0]):
+        for j in range(grid_size[1]):
+            l_operate = l_space[x_start[i]:x_start[i + 1], y_start[j]:y_start[j + 1]]
+            x_len = x_start[i + 1] - x_start[i]
+            y_len = y_start[j + 1] - y_start[j]
+            
+            cdf = np.zeros((256))
+            for m in range(x_len):
+                for n in range(y_len):
+                    cdf[round(l_operate[m, n] * 255)] += 1
+            
+            clip_limit = int(limit * x_len * y_len / 255)
+            clipped = 0
+            for k in range(256):
+                if cdf[k] > clip_limit:
+                    clipped += cdf[k] - clip_limit
+                    cdf[k] = clip_limit
+            clip_distribute = clipped // 256
+            clip_residual = clipped % 256
+            for k in range(256):
+                cdf[k] += clip_distribute
+                if k < clip_residual:
+                    cdf[k] += 1
+            
+            cdf = [t / (x_len * y_len) for t in cdf]
+            for k in range(1, 256):
+                cdf[k] = cdf[k] + cdf[k - 1]
+            mapping[i, j, :] = cdf
+    
+    blockx, blocky = 0, 0
+    def update_block(x, block, center_list):
+        if x == 0:
+            return 0
+        if block == len(center_list):
+            return block
+        if x >= center_list[block]:
+            return block + 1
+        return block
+
+    for x in range(w):
+        blockx = update_block(x, blockx, x_center)
+        for y in range(h):
+            blocky = update_block(y, blocky, y_center)
+            index_l = round(l_space[x, y] * 255)
+            if (
+                (blockx == 0 and blocky == 0) or
+                (blockx == grid_size[0] and blocky == 0) or 
+                (blockx == 0 and blocky == grid_size[1]) or
+                (blockx == grid_size[0] and blocky == grid_size[1])
+            ):
+                hsl_image[x, y, 2] = mapping[max(0, blockx - 1), max(0, blocky - 1), index_l]
+            elif (blockx == 0 or blockx == grid_size[0]):
+                eps = (y - y_center[blocky - 1]) / (y_center[blocky] - y_center[blocky - 1])
+                hsl_image[x, y, 2] = (1 - eps) * mapping[max(0, blockx - 1), blocky - 1, index_l] + eps * mapping[max(0, blockx - 1), blocky, index_l]
+            elif (blocky == 0 or blocky == grid_size[1]):
+                eps = (x - x_center[blockx - 1]) / (x_center[blockx] - x_center[blockx - 1])
+                hsl_image[x, y, 2] = (1 - eps) * mapping[blockx - 1, max(0, blocky - 1), index_l] + eps * mapping[blockx, max(0, blocky - 1), index_l]
+            else:
+                eps_x = (x - x_center[blockx - 1]) / (x_center[blockx] - x_center[blockx - 1])
+                eps_y = (y - y_center[blocky - 1]) / (y_center[blocky] - y_center[blocky - 1])
+                hsl_image[x, y, 2] = (1 - eps_x) * (1 - eps_y) * mapping[blockx - 1, blocky - 1, index_l] + \
+                    (1 - eps_x) * eps_y * mapping[blockx - 1, blocky, index_l] + \
+                    eps_x * (1 - eps_y) * mapping[blockx, blocky - 1, index_l] + \
+                    eps_x * eps_y * mapping[blockx, blocky, index_l]
+    
+    eps = 0.02
+    hsl_image[:, :, 1] = np.where(
+        hsl_image[:, :, 1] + eps > 1, 
+        1, hsl_image[:, :, 1] + eps
+    )
+    
+    return HSL2RGB(hsl_image)
